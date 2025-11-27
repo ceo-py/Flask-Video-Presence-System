@@ -73,7 +73,6 @@
 
 2. **Use the interface:**
 
-   * **Add Cameras**: Click the "+ Add Camera" button to dynamically add more cameras to the UI.
    * **Control Streams**: You can click the "▶" button to start the stream, the "■" button to stop it, and the "⤢" button to toggle fullscreen.
 
 ### Frontend Dependencies
