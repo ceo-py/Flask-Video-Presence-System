@@ -1,0 +1,46 @@
+### Flask ###
+instance/
+.webassets-cache/
+.env
+.venv
+!!! The user specifically requested `.venv` and `test` to be added
+
+### Python ###
+# Byte-code files
+*.pyc
+__pycache__/
+*.pyd
+*.pyo
+*.egg-info/
+.pytest_cache/
+
+# Distributions and packaging
+dist/
+build/
+*.egg
+*.whl
+
+# Virtual environment
+# Standard Python virtualenv names
+venv/
+env/
+# The specific directory the user asked for:
+.venv/
+
+# Environment variables files
+.env
+.flaskenv
+
+# Editor/OS temporary files
+.idea/
+.vscode/
+*.swp
+*~
+.DS_Store
+
+# Unit test output directories requested by user
+test/
+tests/
+
+# AI
+.qodo

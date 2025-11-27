@@ -1,0 +1,13 @@
+# Camera URLS
+camera1=rtsp://192.168.0.1
+camera2=rtsp://192.168.0.1
+
+# HLS output folder
+HLS_ROOT=/var/www/html/streams
+
+# Idle timeout (seconds)
+STREAM_IDLE_TIMEOUT=10
+
+# FFmpeg options (optional)
+FFMPEG_HLS_TIME=2
+FFMPEG_HLS_LIST_SIZE=3
