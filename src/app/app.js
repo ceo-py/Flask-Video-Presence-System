@@ -151,12 +151,17 @@ function createTile(deviceName) {
   const deviceSelect = el.querySelector(".device-select");
   const fullscreenBtn = el.querySelector(".btn-fullscreen");
 
+  // Mute by default to satisfy browser autoplay policies
+  video.muted = true;
+
   title.textContent = deviceName;
   starCamera(deviceName)
     .then((cameraUrl) => {
       if (deviceSelect && cameraUrl) {
         deviceSelect.value = `${API.url}${cameraUrl.url}`; // Set the value of the input field to the camera URL
         console.log("Set device select input value to:", deviceSelect.value);
+        // Auto-start playback when URL is ready
+        playBtn.click();
       } else {
         console.log("Device select input not found or camera URL is invalid");
       }
@@ -198,13 +203,13 @@ function createTile(deviceName) {
           hls.loadSource(val);
           hls.attachMedia(video);
           streams.set(video, { type: "hls", hls });
-          video.muted = false;
+          video.muted = true;
           await video.play().catch(() => {});
         } else {
           // native HLS (Safari)
           video.src = val;
           streams.set(video, { type: "native-hls" });
-          video.muted = false;
+          video.muted = true;
           await video.play().catch(() => {});
         }
 
@@ -261,7 +266,7 @@ function stopVideo(video, deviceName) {
   }
   streams.delete(video);
   if (viewerNotificationIntervals[deviceName]) {
-    clearInterval(viewerNotificationIntervals[deviceName]); 
+    clearInterval(viewerNotificationIntervals[deviceName]);
     delete viewerNotificationIntervals[deviceName];
   }
   try {
