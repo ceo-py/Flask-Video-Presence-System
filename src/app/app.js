@@ -116,12 +116,12 @@ function drawMatrix() {
 /* get media devices list */
 async function refreshDevices() {
   try {
-    await navigator.mediaDevices
-      .getUserMedia({ video: true, audio: false })
-      .then((s) => {
-        s.getTracks().forEach((t) => t.stop());
-      })
-      .catch(() => {});
+    // await navigator.mediaDevices
+    //   .getUserMedia({ video: true, audio: false })
+    //   .then((s) => {
+    //     s.getTracks().forEach((t) => t.stop());
+    //   })
+    //   .catch(() => {});
     const list = await navigator.mediaDevices.enumerateDevices();
     devicesList.innerHTML = "";
     list
@@ -186,8 +186,7 @@ function createTile(deviceName) {
   });
 
   playBtn.addEventListener("click", async () => {
-    if (streams.get(video)) return;
-    stopVideo(video);
+    stopVideo(video, deviceName);
     try {
       const val = deviceSelect.value && deviceSelect.value.trim();
       // If user provided an m3u8/http URL, attempt HLS playback

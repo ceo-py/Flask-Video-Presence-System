@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 import subprocess, time, os, threading
 from dotenv import load_dotenv
-import os
 
 
 load_dotenv()
