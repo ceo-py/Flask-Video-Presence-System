@@ -1,12 +1,13 @@
 # Camera URLS
-camera1=rtsp://192.168.0.1
-camera2=rtsp://192.168.0.1
+camera1=rtsp://192.168.68.104:554/live/ch00_0
+camera2=rtsp://192.168.68.101:554/live/ch00_0
 
 # HLS output folder
 HLS_ROOT=/var/www/html/streams
+INDEX_M3U8=index.m3u8
 
 # Idle timeout (seconds)
-STREAM_IDLE_TIMEOUT=10
+STREAM_IDLE_TIMEOUT=300
 
 # FFmpeg options (optional)
 FFMPEG_HLS_TIME=2

@@ -113,34 +113,6 @@ function drawMatrix() {
   }
 }
 
-/* get media devices list */
-async function refreshDevices() {
-  try {
-    // await navigator.mediaDevices
-    //   .getUserMedia({ video: true, audio: false })
-    //   .then((s) => {
-    //     s.getTracks().forEach((t) => t.stop());
-    //   })
-    //   .catch(() => {});
-    const list = await navigator.mediaDevices.enumerateDevices();
-    devicesList.innerHTML = "";
-    list
-      .filter((d) => d.kind === "videoinput")
-      .forEach((d) => {
-        const opt = document.createElement("option");
-        opt.value = d.deviceName;
-        opt.label = d.label || "Camera";
-        devicesList.appendChild(opt);
-      });
-  } catch (e) {
-    // ignore
-  }
-}
-refreshDevices();
-navigator.mediaDevices &&
-  navigator.mediaDevices.addEventListener &&
-  navigator.mediaDevices.addEventListener("devicechange", refreshDevices);
-
 /* Tile creation and control */
 function createTile(deviceName) {
   const el = template.content.firstElementChild.cloneNode(true);
@@ -155,6 +127,7 @@ function createTile(deviceName) {
   video.muted = true;
 
   title.textContent = deviceName;
+  stopVideo(video, deviceName);
   starCamera(deviceName)
     .then((cameraUrl) => {
       if (deviceSelect && cameraUrl) {
@@ -211,7 +184,7 @@ function createTile(deviceName) {
           video.muted = true;
           await video.play().catch(() => {});
         }
-
+        notifyViewer(deviceName);
         // Start sending periodic notifications every 30 seconds for this camera
         if (!viewerNotificationIntervals[deviceName]) {
           viewerNotificationIntervals[deviceName] = setInterval(() => {
