@@ -176,12 +176,14 @@ function createTile(deviceName) {
           hls.attachMedia(video);
           streams.set(video, { type: "hls", hls });
           video.muted = true;
+          video.controls = true;
           await video.play().catch(() => {});
         } else {
           // native HLS (Safari)
           video.src = val;
           streams.set(video, { type: "native-hls" });
           video.muted = true;
+          video.controls = true;
           await video.play().catch(() => {});
         }
         notifyViewer(deviceName);

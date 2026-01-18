@@ -1,233 +1,287 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
+
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Retro Matrix Cameras</title>
-  <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #000;
-      --matrix-green: #36ff6b;
-      --muted-green: #0f4;
-      --tile-bg: rgba(0, 0, 0, 0.45);
-      --glass: rgba(0, 0, 0, 0.35);
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oriahovo Command Center</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f19;
+            /* Deep dark blue background */
+            color: white;
+        }
 
-    * {
-      box-sizing: border-box;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace;
-      color: var(--matrix-green);
-      -webkit-font-smoothing: antialiased;
-    }
+        .glass-card {
+            background: rgba(19, 23, 35, 0.6);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 20px;
+        }
 
-    html, body {
-      height: 100%;
-      margin: 0;
-      background: var(--bg);
-      overflow: hidden;
-    }
+        .sensor-card {
+            background: linear-gradient(180deg, rgba(30, 35, 50, 0.5) 0%, rgba(20, 25, 40, 0.5) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: 24px;
+        }
 
-    #matrix {
-      position: fixed;
-      inset: 0;
-      z-index: 0;
-    }
+        .icon-glow-orange {
+            filter: drop-shadow(0 0 8px rgba(255, 165, 0, 0.4));
+        }
 
-    #ui {
-      position: relative;
-      z-index: 1;
-      display: flex;
-      flex-direction: column;
-      height: 100%;
-      padding: 12px;
-      gap: 10px;
-    }
+        .icon-glow-blue {
+            filter: drop-shadow(0 0 8px rgba(50, 200, 255, 0.4));
+        }
 
-    #controls {
-      display: flex;
-      gap: 12px;
-      align-items: center;
-    }
+        .icon-glow-cyan {
+            filter: drop-shadow(0 0 8px rgba(0, 255, 200, 0.4));
+        }
 
-    button {
-      background: transparent;
-      border: 1px solid rgba(54, 255, 107, 0.12);
-      color: var(--matrix-green);
-      padding: 8px 12px;
-      border-radius: 8px;
-      min-height: 44px;
-      min-width: 44px;
-    }
+        .icon-glow-green {
+            filter: drop-shadow(0 0 8px rgba(50, 255, 150, 0.4));
+        }
 
-    button:hover {
-      background: rgba(54, 255, 107, 0.03);
-    }
+        .camera-card-mask {
+            mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 85%, transparent 100%);
+        }
 
-    .small {
-      font-size: 12px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    #grid {
-      display: grid;
-      gap: 10px;
-      flex: 1;
-      align-items: start;
-      justify-content: center;
-    }
-
-    /* responsive grid -- keep within single screen height for mobile by limiting rows */
-    @media (orientation: portrait) {
-      #grid {
-        grid-template-columns: repeat(1, minmax(160px, 1fr));
-        grid-auto-rows: 200px;
-      }
-    }
-
-    @media (orientation: landscape) {
-      #grid {
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-        grid-auto-rows: 220px;
-      }
-    }
-
-    .tile {
-      background: var(--tile-bg);
-      border: 1px solid rgba(54, 255, 107, 0.08);
-      border-radius: 10px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      position: relative;
-      min-width: 140px;
-      min-height: 0;
-    }
-
-    .tile-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 8px 10px;
-      background: linear-gradient(90deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.05));
-      border-bottom: 1px solid rgba(54, 255, 107, 0.03);
-      flex: 0 0 auto;
-    }
-
-    .tile .title {
-      font-weight: 700;
-      font-size: 13px;
-    }
-
-    .hdr-controls {
-      display: flex;
-      gap: 6px;
-    }
-
-    .cam {
-      display: block;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      background: #000;
-      flex: 1 1 auto;
-      min-height: 0;
-    }
-
-    .overlay {
-      position: absolute;
-      left: 8px;
-      bottom: 8px;
-      right: 8px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-      padding: 6px;
-      border-radius: 8px;
-      background: linear-gradient(180deg, rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.6));
-      z-index: 2;
-    }
-
-    .label-input {
-      flex: 1;
-      background: transparent;
-      border: 1px solid rgba(54, 255, 107, 0.08);
-      padding: 6px;
-      border-radius: 6px;
-      color: var(--matrix-green);
-    }
-
-    .device-select {
-      flex-basis: 140px;
-      background: transparent;
-      border: 1px solid rgba(54, 255, 107, 0.08);
-      padding: 6px;
-      border-radius: 6px;
-      color: var(--matrix-green);
-    }
-
-    .btn-play, .btn-stop, .btn-remove {
-      min-width: 36px;
-      height: 36px;
-      padding: 6px;
-      border-radius: 6px;
-    }
-
-    .btn-stop {
-      opacity: 0.8;
-    }
-
-    .btn-fullscreen {
-      min-width: 36px;
-      height: 36px;
-      padding: 6px;
-      border-radius: 6px;
-    }
-
-    .btn-remove {
-      color: #ff6b6b;
-    }
-
-    small {
-      color: rgba(54, 255, 107, 0.6);
-    }
-  </style>
+        /* Video specific styles */
+        video {
+            object-fit: cover;
+            border-radius: 24px;
+        }
+    </style>
 </head>
-<body>
-  <canvas id="matrix"></canvas>
 
-  <div id="ui" class="flex flex-col h-full p-3 gap-3">
-    <div id="controls" class="flex gap-3 items-center">
-      <div class="small text-xs flex items-center gap-2">
-        Camera count:
-        <span id="countDisplay" class="font-bold">0</span>
-      </div>
-    </div>
+<body class="min-h-screen p-4 md:p-8 flex flex-col gap-8">
 
-    <div id="grid" class="grid gap-3 flex-1 items-start justify-center"></div>
-  </div>
-
-  <template id="tile-template">
-    <div class="tile bg-[rgba(0,0,0,0.45)] border border-green-600/10 rounded-xl overflow-hidden flex flex-col min-w-[140px] min-h-0 relative">
-      <div class="tile-header flex justify-between items-center p-2 bg-gradient-to-r from-black/25 to-black/5 border-b border-green-600/30 flex-none">
-        <span class="title title-camera font-semibold text-sm">Camera</span>
-        <div class="hdr-controls flex gap-1">
-          <button class="btn-play text-green-600" title="Play">▶</button>
-          <button class="btn-stop text-green-600 opacity-80" title="Stop">■</button>
-          <button class="btn-fullscreen text-green-600" title="Fullscreen">⤢</button>
+    <!-- Sensor Dashboard (Moved to Header Area / Compact) -->
+    <header class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div>
+            <div class="flex items-center gap-3 mb-1">
+                <span
+                    class="bg-emerald-500/10 text-emerald-400 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/20 tracking-wider">●
+                    SYSTEM LIVE</span>
+                <span class="text-slate-500 text-[10px] font-semibold tracking-wider">HQ-SYNC: ACTIVE</span>
+            </div>
+            <h1 class="text-4xl md:text-5xl font-bold tracking-tight text-white">Command Center</h1>
+            <p class="text-slate-400 mt-2 text-sm md:max-w-md">Intelligent monitoring for your smart residence. All
+                systems operational.</p>
         </div>
-      </div>
-      <video class="cam block w-full h-full object-cover bg-black flex-1 min-h-0" playsinline autoplay muted></video>
-      <div class="hidden">
-        <input class="device-select flex-basis-[140px] bg-transparent border border-green-600/10 p-1.5 rounded-lg text-green-600" list="devices-list" placeholder="Choose camera device (optional)"/>
-      </div>
-    </div>
-  </template>
 
-  <datalist id="devices-list"></datalist>
+        <!-- Sensor Dashboard (Header Area / Scaled Down) -->
+        <div class="flex flex-row items-center gap-3">
 
-  <script src="app.js" type="module"></script>
+            <!-- House Card (Scaled Detailed) -->
+            <div class="relative group w-[180px] h-[160px] overflow-hidden rounded-2xl">
+                <!-- Background Image -->
+                <img src="house.png"
+                    class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
+                <div
+                    class="absolute inset-0 bg-gradient-to-t from-[#1a1e29] via-[#1a1e29]/80 to-transparent opacity-90">
+                </div>
+
+                <div class="relative h-full border border-white/5 p-3 flex flex-col justify-between shadow-lg">
+                    <!-- Header -->
+                    <div class="flex justify-between items-start">
+                        <span
+                            class="text-[8px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1 bg-black/40 px-2 py-1 rounded-full border border-white/5 backdrop-blur-sm">
+                            <div class="w-1 h-1 rounded-full bg-emerald-400"></div> HOUSE
+                        </span>
+                        <svg class="w-3 h-3 text-white/70 drop-shadow-md" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6">
+                            </path>
+                        </svg>
+                    </div>
+
+                    <!-- Main -->
+                    <div class="flex flex-col items-center justify-center -mt-1 drop-shadow-lg">
+                        <span class="text-4xl font-black text-white leading-none">23°</span>
+                        <span class="text-[9px] text-emerald-200 font-medium tracking-wide shadow-black">Climate
+                            Ctrl</span>
+                        <div class="flex gap-1 mt-1">
+                            <span class="text-[8px] text-slate-300 bg-black/40 px-1 rounded backdrop-blur-sm">21°
+                                Set</span>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div
+                        class="grid grid-cols-2 gap-px bg-white/5 rounded-xl overflow-hidden border border-white/10 mt-auto backdrop-blur-sm">
+                        <div class="bg-black/40 py-1.5 flex flex-col items-center justify-center">
+                            <span class="text-[10px] font-bold text-white leading-none">45%</span>
+                            <span class="text-[7px] text-slate-300 uppercase">Hum</span>
+                        </div>
+                        <div
+                            class="bg-black/40 py-1.5 flex flex-col items-center justify-center border-l border-white/10">
+                            <span class="text-[10px] font-bold text-white leading-none">Good</span>
+                            <span class="text-[7px] text-slate-300 uppercase">Air</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Oriahovo Card (Scaled Detailed - Real Data) -->
+            <div class="relative group w-[180px] h-[160px] overflow-hidden rounded-2xl">
+                <!-- Background Image -->
+                <img src="oriahovo.png"
+                    class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
+                <div
+                    class="absolute inset-0 bg-gradient-to-t from-[#1a1e29] via-[#1a1e29]/80 to-transparent opacity-90">
+                </div>
+
+                <div class="relative h-full border border-white/5 p-3 flex flex-col justify-between shadow-lg">
+                    <!-- Header -->
+                    <div class="flex justify-between items-start">
+                        <span
+                            class="text-[8px] font-bold text-orange-400 uppercase tracking-widest flex items-center gap-1 bg-black/40 px-2 py-1 rounded-full border border-white/5 backdrop-blur-sm">
+                            <div class="w-1 h-1 rounded-full bg-orange-400"></div> ORIAHOVO
+                        </span>
+                        <img id="weather-icon" src="" alt="Wx" class="w-4 h-4 opacity-90 hidden drop-shadow-md">
+                        <svg id="weather-icon-placeholder" class="w-3 h-3 text-white/70 drop-shadow-md" fill="none"
+                            stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                            </path>
+                        </svg>
+                    </div>
+
+                    <!-- Main -->
+                    <div class="flex flex-col items-center justify-center -mt-1 drop-shadow-lg">
+                        <span class="text-4xl font-black text-white leading-none" id="weather-temp">--°</span>
+                        <span
+                            class="text-[9px] text-orange-200 font-medium tracking-wide uppercase truncate max-w-[80px] shadow-black"
+                            id="weather-label">--</span>
+                        <div class="flex flex-col items-center mt-1 scale-90">
+                            <span id="weather-minmax"
+                                class="text-[8px] text-slate-300 bg-black/40 px-1.5 py-0.5 rounded mb-0.5 backdrop-blur-sm">L:--
+                                H:--</span>
+                            <span id="weather-details" class="text-[8px] text-slate-300 drop-shadow-md">Feels --°</span>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div
+                        class="grid grid-cols-2 gap-px bg-white/5 rounded-xl overflow-hidden border border-white/10 mt-auto backdrop-blur-sm">
+                        <div class="bg-black/40 py-1.5 flex flex-col items-center justify-center">
+                            <span class="text-[10px] font-bold text-white leading-none" id="weather-humidity">--%</span>
+                            <span class="text-[7px] text-slate-300 uppercase">Hum</span>
+                        </div>
+                        <div
+                            class="bg-black/40 py-1.5 flex flex-col items-center justify-center border-l border-white/10">
+                            <span class="text-[10px] font-bold text-white leading-none" id="weather-wind">--</span>
+                            <span class="text-[7px] text-slate-300 uppercase">Wind</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+
+
+    <!-- Camera Feeds -->
+    <section class="flex flex-col gap-6 flex-1 px-6">
+        <div class="flex items-center justify-between">
+            <h2 class="text-2xl font-bold flex items-center gap-4">
+                Live Security Feeds
+                <span id="channel-count"
+                    class="bg-[#1a1e29] text-slate-400 text-xs font-bold px-3 py-1 rounded-full border border-slate-700/50">0
+                    CHANNELS</span>
+            </h2>
+            <div class="flex gap-2">
+                <!-- List View Button -->
+                <button id="btn-list-view"
+                    class="w-10 h-10 flex items-center justify-center rounded-lg bg-[#1a1e29] border border-slate-700/50 hover:bg-[#202533] focus:bg-[#2a3040] focus:ring-2 focus:ring-emerald-500/50 transition-all">
+                    <svg class="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path
+                            d="M5 3a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2V5a2 2 0 00-2-2H5zM5 11a2 2 0 00-2 2v2a2 2 0 002 2h2a2 2 0 002-2v-2a2 2 0 00-2-2H5zM11 5a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V5zM11 13a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z">
+                        </path>
+                    </svg>
+                </button>
+                <!-- Grid View Button -->
+                <button id="btn-grid-view"
+                    class="w-10 h-10 flex items-center justify-center rounded-lg bg-[#1a1e29] border border-slate-700/50 hover:bg-[#202533] focus:bg-[#2a3040] focus:ring-2 focus:ring-emerald-500/50 transition-all">
+                    <svg class="w-5 h-5 text-slate-400" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd"
+                            d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+                            clip-rule="evenodd"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+
+        <div id="camera-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+            <!-- Camera cards will be injected here -->
+            <div class="col-span-full text-center py-20 text-slate-500 animate-pulse">
+                Initializing feed connection...
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer Removed -->
+
+
+    <!-- Templates -->
+    <template id="camera-card-template">
+        <div class="flex flex-col gap-3 card-container group">
+            <!-- Title and Controls Outside -->
+            <div class="flex items-center justify-between px-2">
+                <h3 class="text-lg font-bold text-white tracking-wide cam-name">CAMERA NO NAME</h3>
+                <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 controls-area">
+                    <button
+                        class="btn-mute p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
+                        title="Mute/Unmute">
+                        <!-- Muted Icon -->
+                        <svg class="w-5 h-5 icon-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
+                                clip-rule="evenodd"></path>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
+                        </svg>
+                        <!-- Unmuted Icon -->
+                        <svg class="w-5 h-5 icon-unmuted hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z">
+                            </path>
+                        </svg>
+                    </button>
+                    <button
+                        class="btn-fullscreen p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
+                        title="Fullscreen">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
+                            </path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Video Container -->
+            <div
+                class="relative group aspect-[16/9] rounded-2xl overflow-hidden border border-[#2a3040] bg-[#1a1e29] shadow-lg video-container">
+                <video class="w-full h-full object-cover" muted playsinline></video>
+
+                <!-- Loading State -->
+                <div
+                    class="loading-overlay absolute inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm z-10 transition-opacity duration-300">
+                    <div class="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <script src="apps.js"></script>
 </body>
+
 </html>

@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
+import requests
 import subprocess
 import time
 import os
@@ -12,9 +13,13 @@ app = Flask(__name__)
 CORS(app)
 
 CAMERAS = {
-    'Test1': os.getenv('camera1'),
-    'Test2': os.getenv('camera2'),
+    'Stairs': os.getenv('Stairs'),
+    'Balcony': os.getenv('Balcony'),
+    'Kitchen': os.getenv('Kitchen'),
 }
+
+API_KEY = os.getenv('API_WEATHER')
+BASE_URL_WEATHER = os.getenv('BASE_URL_WEATHER')
 
 HLS_ROOT = os.getenv('HLS_ROOT')
 STREAM_IDLE_TIMEOUT = int(os.getenv('STREAM_IDLE_TIMEOUT'))
@@ -24,7 +29,21 @@ INDEX_M3U8 = os.getenv('INDEX_M3U8')
 
 processes = {}
 last_viewer = {}
-test = []
+
+
+def weather_check(arg) -> tuple:
+    with requests.get(
+        f"{BASE_URL_WEATHER}{arg}&appid={API_KEY}&units=metric"
+    ) as x:
+        x = x.json()
+        t = x["main"]["temp"]
+        t_min = x["main"]["temp_min"]
+        t_max = x["main"]["temp_max"]
+        feels_like = x["main"]["feels_like"]
+        type_of_weather = x["weather"][0]["main"]
+        weather_icon = x["weather"][0]["icon"]
+        return t, t_min, t_max, feels_like, type_of_weather, weather_icon
+
 
 def empty_stream_directory(camera):
     stream_dir = f"{HLS_ROOT}/{camera}"
@@ -45,7 +64,8 @@ def stop_checker():
         now = time.time()
         for cam in list(last_viewer.keys()):
             if cam in processes:
-                if now - last_viewer[cam] > STREAM_IDLE_TIMEOUT:  # seconds without viewers
+                # seconds without viewers
+                if now - last_viewer[cam] > STREAM_IDLE_TIMEOUT:
                     processes[cam].terminate()
                     del processes[cam]
                     empty_stream_directory(cam)
@@ -54,6 +74,12 @@ def stop_checker():
 
 
 threading.Thread(target=stop_checker, daemon=True).start()
+
+
+@app.get("/api/weather/<town>")
+def weather(town):
+    return jsonify(weather_check(
+        town))
 
 
 @app.get("/api/allCameras")
@@ -79,7 +105,7 @@ def start(cam):
     if cam not in CAMERAS:
         return "unknown camera", 404
 
-    last_viewer[cam] = time.time()    
+    last_viewer[cam] = time.time()
     if cam not in processes:
         os.makedirs(f"{HLS_ROOT}/{cam}", exist_ok=True)
 
