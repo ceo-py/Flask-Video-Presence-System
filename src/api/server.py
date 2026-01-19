@@ -6,6 +6,7 @@ import time
 import os
 import threading
 from dotenv import load_dotenv
+from tuya import get_sensor_data
 
 
 load_dotenv()
@@ -20,6 +21,7 @@ CAMERAS = {
 
 API_KEY = os.getenv('API_WEATHER')
 BASE_URL_WEATHER = os.getenv('BASE_URL_WEATHER')
+
 
 HLS_ROOT = os.getenv('HLS_ROOT')
 STREAM_IDLE_TIMEOUT = int(os.getenv('STREAM_IDLE_TIMEOUT'))
@@ -42,7 +44,9 @@ def weather_check(arg) -> tuple:
         feels_like = x["main"]["feels_like"]
         type_of_weather = x["weather"][0]["main"]
         weather_icon = x["weather"][0]["icon"]
-        return t, t_min, t_max, feels_like, type_of_weather, weather_icon
+        humidity = x["main"]["humidity"]
+        wind = x["wind"]["speed"]
+        return t, t_min, t_max, feels_like, type_of_weather, weather_icon, humidity, wind
 
 
 def empty_stream_directory(camera):
@@ -74,6 +78,14 @@ def stop_checker():
 
 
 threading.Thread(target=stop_checker, daemon=True).start()
+
+
+
+
+
+@app.get("/api/tuya/<device>")
+def tuya(device):
+    return jsonify(get_sensor_data(device))
 
 
 @app.get("/api/weather/<town>")
