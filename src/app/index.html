@@ -4,6 +4,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Oriahovo Command Center">
+    <meta property="og:description"
+        content="Къща Оряхово: Наблюдавайте температурата и влажността в парника, къщата и града в реално време, плюс камери за сигурност.">
+    <meta property="og:image" content="assets/house_oriahovo.webp">
+    <meta property="og:url" content="https://oriahovo.ceo-py.eu">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="Oriahovo Command Center">
+
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Oriahovo Command Center">
+    <meta name="twitter:description"
+        content="Къща Оряхово: Наблюдавайте температурата и влажността в парника, къщата и града в реално време, плюс камери за сигурност.">
+    <meta name="twitter:image" content="assets/house_oriahovo.webp">
     <title>Oriahovo Command Center</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
@@ -75,15 +88,22 @@
         </div>
 
         <!-- Sensor Dashboard (Header Area / Scaled Down) -->
-        <div class="flex flex-row items-center gap-3">
+        <div class="grid grid-cols-3 gap-2 w-full md:w-auto">
 
             <!-- House Card (Scaled Detailed) -->
-            <div class="relative group w-[180px] h-[160px] overflow-hidden rounded-2xl">
+            <div class="relative group w-full md:w-[180px] h-[120px] md:h-[160px] overflow-hidden rounded-2xl">
                 <!-- Background Image -->
-                <img src="house.png"
+                <img src="assets/house.webp"
                     class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
                 <div
                     class="absolute inset-0 bg-gradient-to-t from-[#1a1e29] via-[#1a1e29]/80 to-transparent opacity-90">
+                </div>
+
+                <!-- Loading Overlay -->
+                <div id="house-loader"
+                    class="absolute inset-0 z-20 flex items-center justify-center bg-[#1a1e29]/80 backdrop-blur-sm transition-opacity duration-500">
+                    <div class="w-6 h-6 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin">
+                    </div>
                 </div>
 
                 <div class="relative h-full border border-white/5 p-3 flex flex-col justify-between shadow-lg">
@@ -103,13 +123,10 @@
 
                     <!-- Main -->
                     <div class="flex flex-col items-center justify-center -mt-1 drop-shadow-lg">
-                        <span class="text-4xl font-black text-white leading-none" id="house-temp">--°</span>
-                        <span class="text-[9px] text-emerald-200 font-medium tracking-wide shadow-black">Climate
+                        <span class="text-2xl md:text-4xl font-black text-white leading-none" id="house-temp">--°</span>
+                        <span
+                            class="text-[8px] md:text-[9px] text-emerald-200 font-medium tracking-wide shadow-black">Climate
                             Ctrl</span>
-                        <div class="flex gap-1 mt-1">
-                            <span class="text-[8px] text-slate-300 bg-black/40 px-1 rounded backdrop-blur-sm">--
-                                Set</span>
-                        </div>
                     </div>
 
                     <!-- Footer -->
@@ -129,12 +146,19 @@
             </div>
 
             <!-- Tent Card (New) -->
-            <div class="relative group w-[180px] h-[160px] overflow-hidden rounded-2xl">
-                <!-- Background Image (Using house.png temporarily or placeholder) -->
-                <img src="house.png"
+            <div class="relative group w-full md:w-[180px] h-[120px] md:h-[160px] overflow-hidden rounded-2xl">
+                <!-- Background Image (Using house.webp temporarily or placeholder) -->
+                <img src="assets/greenhouse.webp"
                     class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700 hue-rotate-180">
                 <div
                     class="absolute inset-0 bg-gradient-to-t from-[#1a1e29] via-[#1a1e29]/80 to-transparent opacity-90">
+                </div>
+
+                <!-- Loading Overlay -->
+                <div id="tent-loader"
+                    class="absolute inset-0 z-20 flex items-center justify-center bg-[#1a1e29]/80 backdrop-blur-sm transition-opacity duration-500">
+                    <div class="w-6 h-6 border-2 border-purple-500 border-t-transparent rounded-full animate-spin">
+                    </div>
                 </div>
 
                 <div class="relative h-full border border-white/5 p-3 flex flex-col justify-between shadow-lg">
@@ -145,15 +169,19 @@
                             <div class="w-1 h-1 rounded-full bg-purple-400"></div> TENT
                         </span>
                         <!-- Tent Icon -->
-                        <svg class="w-3 h-3 text-white/70 drop-shadow-md" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"></path>
+                        <svg class="w-3 h-3 text-white/70 drop-shadow-md" fill="none" stroke="currentColor"
+                            viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4">
+                            </path>
                         </svg>
                     </div>
 
                     <!-- Main -->
                     <div class="flex flex-col items-center justify-center -mt-1 drop-shadow-lg">
-                        <span class="text-4xl font-black text-white leading-none" id="tent-temp">--°</span>
-                        <span class="text-[9px] text-purple-200 font-medium tracking-wide shadow-black">Sensor
+                        <span class="text-2xl md:text-4xl font-black text-white leading-none" id="tent-temp">--°</span>
+                        <span
+                            class="text-[8px] md:text-[9px] text-purple-200 font-medium tracking-wide shadow-black">Sensor
                             Data</span>
                     </div>
 
@@ -174,12 +202,19 @@
             </div>
 
             <!-- Oriahovo Card (Scaled Detailed - Real Data) -->
-            <div class="relative group w-[180px] h-[160px] overflow-hidden rounded-2xl">
+            <div class="relative group w-full md:w-[180px] h-[120px] md:h-[160px] overflow-hidden rounded-2xl">
                 <!-- Background Image -->
-                <img src="oriahovo.png"
+                <img src="assets/oriahovo.webp"
                     class="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700">
                 <div
                     class="absolute inset-0 bg-gradient-to-t from-[#1a1e29] via-[#1a1e29]/80 to-transparent opacity-90">
+                </div>
+
+                <!-- Loading Overlay -->
+                <div id="weather-loader"
+                    class="absolute inset-0 z-20 flex items-center justify-center bg-[#1a1e29]/80 backdrop-blur-sm transition-opacity duration-500">
+                    <div class="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin">
+                    </div>
                 </div>
 
                 <div class="relative h-full border border-white/5 p-3 flex flex-col justify-between shadow-lg">
@@ -200,9 +235,10 @@
 
                     <!-- Main -->
                     <div class="flex flex-col items-center justify-center -mt-1 drop-shadow-lg">
-                        <span class="text-4xl font-black text-white leading-none" id="weather-temp">--°</span>
+                        <span class="text-2xl md:text-4xl font-black text-white leading-none"
+                            id="weather-temp">--°</span>
                         <span
-                            class="text-[9px] text-orange-200 font-medium tracking-wide uppercase truncate max-w-[80px] shadow-black"
+                            class="text-[8px] md:text-[9px] text-orange-200 font-medium tracking-wide uppercase truncate max-w-[80px] shadow-black"
                             id="weather-label">--</span>
                         <div class="flex flex-col items-center mt-1 scale-90">
                             <span id="weather-minmax"
@@ -281,33 +317,6 @@
             <div class="flex items-center justify-between px-2">
                 <h3 class="text-lg font-bold text-white tracking-wide cam-name">CAMERA NO NAME</h3>
                 <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 controls-area">
-                    <button
-                        class="btn-mute p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
-                        title="Mute/Unmute">
-                        <!-- Muted Icon -->
-                        <svg class="w-5 h-5 icon-muted" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"
-                                clip-rule="evenodd"></path>
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2"></path>
-                        </svg>
-                        <!-- Unmuted Icon -->
-                        <svg class="w-5 h-5 icon-unmuted hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z">
-                            </path>
-                        </svg>
-                    </button>
-                    <button
-                        class="btn-fullscreen p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors text-slate-400 hover:text-white"
-                        title="Fullscreen">
-                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4">
-                            </path>
-                        </svg>
-                    </button>
                 </div>
             </div>
 

@@ -1,5 +1,6 @@
 const API = {
-  url: "http://127.0.0.1:5000",
+  url: "https://api-cameras.ceo-py.eu",
+  // url: "http://127.0.0.1:5000",
   endPoint: {
     allCameras: "/api/allCameras",
     start: "/api/start",
@@ -36,6 +37,11 @@ const houseBattery = document.getElementById("house-battery");
 const tentTemp = document.getElementById("tent-temp");
 const tentHumidity = document.getElementById("tent-humidity");
 const tentBattery = document.getElementById("tent-battery");
+
+// Loaders
+const houseLoader = document.getElementById("house-loader");
+const tentLoader = document.getElementById("tent-loader");
+const weatherLoader = document.getElementById("weather-loader");
 
 async function fetchWeather() {
   try {
@@ -75,6 +81,9 @@ async function fetchWeather() {
       // Humidity & Wind
       if (weatherHumidity) weatherHumidity.textContent = `${humidity}%`;
       if (weatherWind) weatherWind.textContent = `${wind} KM/H`;
+
+      // Hide Loader
+      if (weatherLoader) weatherLoader.classList.add("opacity-0", "pointer-events-none");
     }
   } catch (e) {
     console.warn("Weather fetch failed", e);
@@ -87,12 +96,12 @@ async function fetchTuyaData(target) {
     if (!res.ok) throw new Error(`Tuya API failed for ${target}`);
 
     const data = await res.json();
-    console.log(data);
     // {'va_temperature': 'N/A', 'va_humidity': 'N/A', 'battery_state': 'N/A'}
 
     const tempEl = target === "house" ? houseTemp : tentTemp;
     const humEl = target === "house" ? houseHumidity : tentHumidity;
     const batEl = target === "house" ? houseBattery : tentBattery;
+    const loaderEl = target === "house" ? houseLoader : tentLoader;
 
     if (tempEl) {
       const temp = data.va_temperature;
@@ -112,6 +121,9 @@ async function fetchTuyaData(target) {
       const bat = data.battery_state;
       batEl.textContent = bat && bat !== "N/A" ? bat : "--";
     }
+
+    // Hide Loader
+    if (loaderEl) loaderEl.classList.add("opacity-0", "pointer-events-none");
   } catch (e) {
     console.warn(`Tuya fetch failed for ${target}`, e);
   }
@@ -240,34 +252,47 @@ function createCameraCard(camName) {
   const loader = clone.querySelector(".loading-overlay");
 
   // Controls
-  const btnMute = clone.querySelector(".btn-mute");
-  const iconMuted = clone.querySelector(".icon-muted");
-  const iconUnmuted = clone.querySelector(".icon-unmuted");
-  const btnFullscreen = clone.querySelector(".btn-fullscreen");
 
   // Set Name
   nameEl.textContent = `${camName}`;
 
   // Controls Logic
-  btnMute.addEventListener("click", () => {
-    video.muted = !video.muted;
-    if (video.muted) {
-      iconMuted.classList.remove("hidden");
-      iconUnmuted.classList.add("hidden");
+
+
+  // Double-Click Fullscreen
+  video.addEventListener("dblclick", () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
     } else {
-      iconMuted.classList.add("hidden");
-      iconUnmuted.classList.remove("hidden");
+      if (video.requestFullscreen) {
+        video.requestFullscreen();
+      } else if (video.webkitRequestFullscreen) {
+        video.webkitRequestFullscreen(); // Safari
+      } else if (video.msRequestFullscreen) {
+        video.msRequestFullscreen(); // IE11
+      }
     }
   });
 
-  btnFullscreen.addEventListener("click", () => {
-    if (video.requestFullscreen) {
-      video.requestFullscreen();
-    } else if (video.webkitRequestFullscreen) {
-      video.webkitRequestFullscreen();
-    } else if (video.msRequestFullscreen) {
-      video.msRequestFullscreen();
+  // Robust Loading Handling
+  const hideLoader = () => {
+    if (!loader.classList.contains("hidden")) {
+      loader.classList.add("opacity-0");
+      setTimeout(() => loader.classList.add("hidden"), 300);
     }
+  };
+
+  video.addEventListener("playing", hideLoader);
+  video.addEventListener("timeupdate", () => {
+    if (video.currentTime > 0 && !video.paused && !video.ended && video.readyState > 2) {
+      hideLoader();
+    }
+  });
+  
+  // Retry on click if stuck
+  loader.addEventListener("click", () => {
+      console.log(`Manual retry for ${camName}`);
+      loadStream(video, camName, loader);
   });
 
   // Initial Load
@@ -303,12 +328,12 @@ function loadStream(video, camName, loader) {
       if (Hls.isSupported()) {
         const hls = new Hls({
           enableWorker: true,
-          lowLatencyMode: true,
+          lowLatencyMode: false, // Relaxed for stability
 
-          // Aggressive Live Sync
-          liveSyncDurationCount: 2,
-          liveMaxLatencyDurationCount: 5,
-          maxLiveSyncPlaybackRate: 2, // Catch up speed
+          // Relaxed Live Sync
+          liveSyncDurationCount: 3,
+          liveMaxLatencyDurationCount: 10,
+          maxLiveSyncPlaybackRate: 1.5,
 
           manifestLoadingMaxRetry: 10,
           manifestLoadingRetryDelay: 500,
