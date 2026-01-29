@@ -1,14 +1,35 @@
 # Camera URLS
-camera1=rtsp://192.168.68.104:554/live/ch00_0
-camera2=rtsp://192.168.68.101:554/live/ch00_0
+Balcony=rtsp://
+Stairs=rtsp://
+Kitchen=rtsp://
 
 # HLS output folder
-HLS_ROOT=/var/www/html/streams
+HLS_ROOT=/home/user/streams
+HLS_ROOT_RAM_DISK=/tmp/hls_streams
 INDEX_M3U8=index.m3u8
 
 # Idle timeout (seconds)
-STREAM_IDLE_TIMEOUT=300
+STREAM_IDLE_TIMEOUT=120
 
 # FFmpeg options (optional)
 FFMPEG_HLS_TIME=2
 FFMPEG_HLS_LIST_SIZE=3
+
+# WEATHER API
+API_WEATHER=...
+BASE_URL_WEATHER=http://api.openweathermap.org/data/2.5/weather?q=
+
+
+# TYUA
+ACCESS_ID=..
+ACCESS_SECRET=...
+END_POINT=https://openapi.tuyaeu.com
+
+#Devices
+CONTACT=...
+SENSOR=...
+
+#Home Assistant
+HA_TOKEN=...
+HA_SENSOR_HOURSE_ID=...
+HA_URL=...

@@ -23,7 +23,7 @@ API_KEY = os.getenv('API_WEATHER')
 BASE_URL_WEATHER = os.getenv('BASE_URL_WEATHER')
 
 
-HLS_ROOT = os.getenv('HLS_ROOT')
+HLS_ROOT = os.getenv('HLS_ROOT_RAM_DISK')
 STREAM_IDLE_TIMEOUT = int(os.getenv('STREAM_IDLE_TIMEOUT'))
 FFMPEG_HLS_TIME = os.getenv('FFMPEG_HLS_TIME')
 FFMPEG_HLS_LIST_SIZE = os.getenv('FFMPEG_HLS_LIST_SIZE')
@@ -71,6 +71,7 @@ def stop_checker():
                 # seconds without viewers
                 if now - last_viewer[cam] > STREAM_IDLE_TIMEOUT:
                     processes[cam].terminate()
+                    processes[cam].wait()
                     del processes[cam]
                     empty_stream_directory(cam)
 
@@ -129,7 +130,8 @@ def start(cam):
             "-f", "hls",
             "-hls_time", FFMPEG_HLS_TIME,
             "-hls_list_size", FFMPEG_HLS_LIST_SIZE,
-            "-hls_flags", "delete_segments",
+            #"-hls_flags", "delete_segments",
+            "-hls_flags", "delete_segments+temp_file",
             f"{HLS_ROOT}/{cam}/{INDEX_M3U8}"
         ]
 
@@ -144,6 +146,7 @@ def start(cam):
 def stop(cam):
     if cam in processes:
         processes[cam].terminate()
+        processes[cam].wait()
         del processes[cam]
         empty_stream_directory(cam)
     return "stopped"
