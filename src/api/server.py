@@ -29,6 +29,11 @@ FFMPEG_HLS_TIME = os.getenv('FFMPEG_HLS_TIME')
 FFMPEG_HLS_LIST_SIZE = os.getenv('FFMPEG_HLS_LIST_SIZE')
 INDEX_M3U8 = os.getenv('INDEX_M3U8')
 
+YOUTUBE_API_KEY = os.getenv('YOUTUBE_API_KEY')
+PLAYLIST_ID = os.getenv('PLAYLIST_ID')
+YOUTUBE_URL = os.getenv('YOUTUBE_URL')
+YOUTUBE_API_URL = os.getenv('YOUTUBE_API_URL')
+
 processes = {}
 last_viewer = {}
 
@@ -150,6 +155,63 @@ def stop(cam):
         del processes[cam]
         empty_stream_directory(cam)
     return "stopped"
+
+
+@app.get("/api/recentEvents")
+def recent_events():
+    events = []
+    next_page_token = None
+    
+    try:
+        while True:
+            url = (
+                f"{YOUTUBE_API_URL}"
+                f"?part=snippet"
+                f"&playlistId={PLAYLIST_ID}"
+                f"&maxResults=50"
+                f"&key={YOUTUBE_API_KEY}"
+            )
+            if next_page_token:
+                url += f"&pageToken={next_page_token}"
+
+            with requests.get(url) as response:
+                if response.status_code != 200:
+                    print(f"YouTube API Error: {response.status_code} - {response.text}")
+                    break
+                
+                data = response.json()
+                items = data.get('items', [])
+                
+                for item in items:
+                    title = item['snippet']['title']
+                    video_id = item['snippet']['resourceId']['videoId']
+                    
+                    # More robust split in case camera name has spaces
+                    parts = title.rsplit(' ', 1)
+                    if len(parts) == 2:
+                        camera = parts[0]
+                        timestamp = parts[1].replace('T', ' ')
+                    else:
+                        camera = title
+                        timestamp = "N/A"
+
+                    events.append({
+                        "device": camera,
+                        "timestamp": timestamp,
+                        "videoUrl": f"{YOUTUBE_URL}{video_id}",
+                        "eventType": "Motion Detection",
+                        "status": "Logged"
+                    })
+                
+                next_page_token = data.get('nextPageToken')
+                if not next_page_token:
+                    break
+                    
+        return jsonify(events)
+    except Exception as e:
+        print(f"Error fetching YouTube data: {e}")
+        return jsonify({"error": str(e)}), 500
+
 
 
 if __name__ == "__main__":

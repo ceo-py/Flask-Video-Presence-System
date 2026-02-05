@@ -1,6 +1,6 @@
 const API = {
-  url: "https://api-cameras.ceo-py.eu",
-  // url: "http://127.0.0.1:5000",
+  // url: "https://api-cameras.ceo-py.eu",
+  url: "http://127.0.0.1:5000",
   endPoint: {
     allCameras: "/api/allCameras",
     start: "/api/start",
@@ -9,6 +9,7 @@ const API = {
     stream: "/streams",
     weather: "/api/weather/oriahovo",
     tuya: "/api/tuya",
+    recentEvents: "/api/recentEvents",
   },
 };
 
@@ -42,6 +43,11 @@ const tentBattery = document.getElementById("tent-battery");
 const houseLoader = document.getElementById("house-loader");
 const tentLoader = document.getElementById("tent-loader");
 const weatherLoader = document.getElementById("weather-loader");
+
+// Recent Events Elements
+const eventsTableBody = document.getElementById("events-table-body");
+const eventCountEl = document.getElementById("event-count");
+const eventsLoader = document.getElementById("events-loader");
 
 async function fetchWeather() {
   try {
@@ -129,6 +135,59 @@ async function fetchTuyaData(target) {
   }
 }
 
+async function fetchRecentEvents() {
+  try {
+    const res = await fetch(`${API.url}${API.endPoint.recentEvents}`);
+    if (!res.ok) throw new Error("Recent Events API failed");
+
+    const events = await res.json();
+    renderRecentEvents(events);
+  } catch (e) {
+    console.warn("Recent events fetch failed", e);
+    if (eventsTableBody) {
+        eventsTableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-red-500/70">Failed to load events.</td></tr>';
+    }
+  }
+}
+
+function renderRecentEvents(events) {
+  if (!eventsTableBody) return;
+
+  if (eventCountEl) {
+    eventCountEl.textContent = `${events.length} EVENTS`;
+  }
+
+  if (events.length === 0) {
+    eventsTableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500 italic">No recent events detected.</td></tr>';
+    return;
+  }
+
+  eventsTableBody.innerHTML = ""; // Clear loader/previous
+
+  events.forEach((event) => {
+    const tr = document.createElement("tr");
+    tr.className = "border-b border-white/5 hover:bg-white/10 transition-colors group cursor-pointer";
+    tr.title = "Click to view event video";
+
+    tr.innerHTML = `
+        <td class="px-6 py-4 font-medium text-slate-300">${event.timestamp}</td>
+        <td class="px-6 py-4 font-semibold text-white">${event.device}</td>
+        <td class="px-6 py-4">
+            <div class="flex items-center gap-2">
+                <div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
+                <span class="text-slate-300 font-medium">${event.eventType || "Motion"}</span>
+            </div>
+        </td>
+    `;
+
+    tr.addEventListener("click", () => {
+      window.open(event.videoUrl, "_blank");
+    });
+
+    eventsTableBody.appendChild(tr);
+  });
+}
+
 // Grid Control Buttons
 const btnListView = document.getElementById("btn-list-view");
 const btnGridView = document.getElementById("btn-grid-view");
@@ -212,6 +271,7 @@ async function init() {
     fetchWeather(); // Fire and forget
     fetchTuyaData("house");
     fetchTuyaData("tent");
+    fetchRecentEvents();
 
     const cameras = await fetchCameras();
     channelCountEl.textContent = `${cameras.length} CHANNELS`;

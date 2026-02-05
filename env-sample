@@ -4,7 +4,7 @@ Stairs=rtsp://
 Kitchen=rtsp://
 
 # HLS output folder
-HLS_ROOT=/home/user/streams
+HLS_ROOT=/home/...
 HLS_ROOT_RAM_DISK=/tmp/hls_streams
 INDEX_M3U8=index.m3u8
 
@@ -16,20 +16,26 @@ FFMPEG_HLS_TIME=2
 FFMPEG_HLS_LIST_SIZE=3
 
 # WEATHER API
-API_WEATHER=...
+API_WEATHER=
 BASE_URL_WEATHER=http://api.openweathermap.org/data/2.5/weather?q=
 
+# YOUTUBE
+YOUTUBE_URL=https://youtu.be/
+YOUTUBE_API_URL=https://www.googleapis.com/youtube/v3/playlistItems
+YOUTUBE_API_KEY=
+PLAYLIST_ID=
 
 # TYUA
-ACCESS_ID=..
-ACCESS_SECRET=...
+ACCESS_ID=
+ACCESS_SECRET=
 END_POINT=https://openapi.tuyaeu.com
 
 #Devices
-CONTACT=...
-SENSOR=...
+CONTACT_SENSOR_ID=
+SENSOR_TENT_ID=
+SENSOR_HOUSE_ID=
 
 #Home Assistant
-HA_TOKEN=...
-HA_SENSOR_HOURSE_ID=...
-HA_URL=...
+HA_TOKEN=
+HA_SENSOR_HOURSE_ID=
+HA_URL=

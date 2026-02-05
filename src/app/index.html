@@ -68,7 +68,26 @@
             object-fit: cover;
             border-radius: 24px;
         }
+
+        /* FOUC Fix: Hide body until Tailwind is ready */
+        body {
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+        }
+
+        body.ready {
+            opacity: 1;
+        }
     </style>
+    <script>
+        // Reveal body once DOM is interactive
+        document.addEventListener('DOMContentLoaded', () => {
+            // Short delay to allow Tailwind CDN to process classes
+            setTimeout(() => {
+                document.body.classList.add('ready');
+            }, 100);
+        });
+    </script>
 </head>
 
 <body class="min-h-screen p-4 md:p-8 flex flex-col gap-8">
@@ -303,6 +322,46 @@
             <!-- Camera cards will be injected here -->
             <div class="col-span-full text-center py-20 text-slate-500 animate-pulse">
                 Initializing feed connection...
+            </div>
+        </div>
+    </section>
+
+    <!-- Recent Events -->
+    <section class="flex flex-col gap-6 px-6 pb-12">
+        <div class="flex items-center justify-between">
+            <h2 class="text-2xl font-bold flex items-center gap-4">
+                Recent Events
+                <span id="event-count"
+                    class="bg-[#1a1e29] text-slate-400 text-xs font-bold px-3 py-1 rounded-full border border-slate-700/50">0
+                    EVENTS</span>
+            </h2>
+        </div>
+
+        <div class="glass-card overflow-hidden border border-white/5">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr
+                            class="text-[10px] font-bold text-slate-500 uppercase tracking-widest border-b border-white/5">
+                            <th class="px-6 py-4">Timestamp</th>
+                            <th class="px-6 py-4">Device</th>
+                            <th class="px-6 py-4">Event Type</th>
+                        </tr>
+                    </thead>
+                    <tbody id="events-table-body" class="text-sm">
+                        <!-- Event rows will be injected here -->
+                        <tr id="events-loader">
+                            <td colspan="3" class="px-6 py-12 text-center text-slate-500 italic">
+                                <div class="flex items-center justify-center gap-3">
+                                    <div
+                                        class="w-4 h-4 border-2 border-slate-500 border-t-transparent rounded-full animate-spin">
+                                    </div>
+                                    Syncing event logs...
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
         </div>
     </section>
