@@ -1,8 +1,9 @@
 const API = {
-  url: "http://127.0.0.1:5000",
+  url: "https://api-cameras.ceo-py.eu",
   endPoint: {
     allCameras: "/api/allCameras",
-    weather: "/api/weather/oryahovo",
+    streams: "/streams",
+    weather: "/api/weather/oriahovo",
     tuya: "/api/tuya",
     recentEvents: "/api/recentEvents",
   },
@@ -12,76 +13,50 @@ const grid = document.getElementById("camera-grid");
 const template = document.getElementById("camera-card-template");
 const channelCountEl = document.getElementById("channel-count");
 
-// Weather Elements
+// UI Elements
 const weatherTemp = document.getElementById("weather-temp");
-const weatherIcon = document.getElementById("weather-icon");
-const weatherPlaceholder = document.getElementById("weather-icon-placeholder");
 const weatherDetails = document.getElementById("weather-details");
 const weatherMinMax = document.getElementById("weather-minmax");
 const weatherLabel = document.getElementById("weather-label");
-
-// Weather Stats Elements (Humidity/Wind)
+const weatherIcon = document.getElementById("weather-icon");
 const weatherHumidity = document.getElementById("weather-humidity");
 const weatherWind = document.getElementById("weather-wind");
+const weatherLoader = document.getElementById("weather-loader");
+const weatherPlaceholder = document.getElementById("weather-icon-placeholder");
 
-// Tuya House Elements
 const houseTemp = document.getElementById("house-temp");
 const houseHumidity = document.getElementById("house-humidity");
 const houseBattery = document.getElementById("house-battery");
+const houseLoader = document.getElementById("house-loader");
 
-// Tuya Tent Elements
 const tentTemp = document.getElementById("tent-temp");
 const tentHumidity = document.getElementById("tent-humidity");
 const tentBattery = document.getElementById("tent-battery");
-
-// Loaders
-const houseLoader = document.getElementById("house-loader");
 const tentLoader = document.getElementById("tent-loader");
-const weatherLoader = document.getElementById("weather-loader");
 
-// Recent Events Elements
 const eventsTableBody = document.getElementById("events-table-body");
 const eventCountEl = document.getElementById("event-count");
-const eventsLoader = document.getElementById("events-loader");
+
+let hlsInstances = {};
+let initTime = {};
+
+// ─── Data Fetchers ──────────────────────────────────────────
 
 async function fetchWeather() {
   try {
     const res = await fetch(`${API.url}${API.endPoint.weather}`);
     if (!res.ok) throw new Error("Weather API failed");
-
     const data = await res.json();
     if (Array.isArray(data) && data.length >= 8) {
-      const temp = Math.round(data[0]);
-      const tMin = Math.round(data[1]);
-      const tMax = Math.round(data[2]);
-      const condition = data[4];
-      const iconCode = data[5];
-      const humidity = data[6];
-      const wind = Math.round(data[7]);
-
-      // Update UI
-      weatherTemp.textContent = `${temp}°C`;
-      weatherLabel.textContent = condition.toUpperCase();
-
-      // Icon
-      const iconUrl = `https://openweathermap.org/img/wn/${iconCode}@2x.png`;
-      weatherIcon.src = iconUrl;
+      weatherTemp.textContent = `${Math.round(data[0])}°C`;
+      weatherLabel.textContent = data[4].toUpperCase();
+      weatherIcon.src = `https://openweathermap.org/img/wn/${data[5]}@2x.png`;
       weatherIcon.classList.remove("hidden");
       if (weatherPlaceholder) weatherPlaceholder.classList.add("hidden");
-
-      // Details (Feels like)
       weatherDetails.textContent = `Feels ${Math.round(data[3])}°C`;
-      weatherDetails.classList.remove("hidden");
-
-      // Min/Max
-      weatherMinMax.textContent = `L:${tMin}° H:${tMax}°`;
-      weatherMinMax.classList.remove("hidden");
-
-      // Humidity & Wind
-      if (weatherHumidity) weatherHumidity.textContent = `${humidity}%`;
-      if (weatherWind) weatherWind.textContent = `${wind} KM/H`;
-
-      // Hide Loader
+      weatherMinMax.textContent = `L:${Math.round(data[1])}° H:${Math.round(data[2])}°`;
+      if (weatherHumidity) weatherHumidity.textContent = `${data[6]}%`;
+      if (weatherWind) weatherWind.textContent = `${Math.round(data[7])} KM/H`;
       if (weatherLoader) weatherLoader.classList.add("opacity-0", "pointer-events-none");
     }
   } catch (e) {
@@ -93,34 +68,15 @@ async function fetchTuyaData(target) {
   try {
     const res = await fetch(`${API.url}${API.endPoint.tuya}/${target}`);
     if (!res.ok) throw new Error(`Tuya API failed for ${target}`);
-
     const data = await res.json();
-
     const tempEl = target === "house" ? houseTemp : tentTemp;
     const humEl = target === "house" ? houseHumidity : tentHumidity;
     const batEl = target === "house" ? houseBattery : tentBattery;
     const loaderEl = target === "house" ? houseLoader : tentLoader;
 
-    if (tempEl) {
-      const temp = data.va_temperature;
-      tempEl.textContent =
-        temp !== null && temp !== undefined && temp !== "N/A"
-          ? `${temp}°`
-          : "--°";
-    }
-
-    if (humEl) {
-      const hum = data.va_humidity;
-      humEl.textContent =
-        hum !== null && hum !== undefined && hum !== "N/A" ? `${hum}%` : "--%";
-    }
-
-    if (batEl) {
-      const bat = data.battery_state;
-      batEl.textContent = bat && bat !== "N/A" ? bat : "--";
-    }
-
-    // Hide Loader
+    if (tempEl) tempEl.textContent = data.va_temperature ? `${data.va_temperature}°` : "--°";
+    if (humEl) humEl.textContent = data.va_humidity ? `${data.va_humidity}%` : "--%";
+    if (batEl) batEl.textContent = data.battery_state && data.battery_state !== "N/A" ? data.battery_state : "--";
     if (loaderEl) loaderEl.classList.add("opacity-0", "pointer-events-none");
   } catch (e) {
     console.warn(`Tuya fetch failed for ${target}`, e);
@@ -130,240 +86,143 @@ async function fetchTuyaData(target) {
 async function fetchRecentEvents() {
   try {
     const res = await fetch(`${API.url}${API.endPoint.recentEvents}`);
-    if (!res.ok) throw new Error("Recent Events API failed");
-
     const events = await res.json();
-    renderRecentEvents(events);
-  } catch (e) {
-    console.warn("Recent events fetch failed", e);
-    if (eventsTableBody) {
-        eventsTableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-red-500/70">Failed to load events.</td></tr>';
-    }
-  }
-}
-
-function renderRecentEvents(events) {
-  if (!eventsTableBody) return;
-
-  if (eventCountEl) {
-    eventCountEl.textContent = `${events.length} EVENTS`;
-  }
-
-  if (events.length === 0) {
-    eventsTableBody.innerHTML = '<tr><td colspan="5" class="px-6 py-8 text-center text-slate-500 italic">No recent events detected.</td></tr>';
-    return;
-  }
-
-  eventsTableBody.innerHTML = ""; // Clear loader/previous
-
-  events.forEach((event) => {
-    const tr = document.createElement("tr");
-    tr.className = "border-b border-white/5 hover:bg-white/10 transition-colors group cursor-pointer";
-    tr.title = "Click to view event video";
-
-    tr.innerHTML = `
+    if (!eventsTableBody) return;
+    if (eventCountEl) eventCountEl.textContent = `${events.length} EVENTS`;
+    eventsTableBody.innerHTML = events.length === 0 
+      ? '<tr><td colspan="3" class="px-6 py-8 text-center text-slate-500 italic">No recent events detected.</td></tr>'
+      : "";
+    
+    events.forEach((event) => {
+      const tr = document.createElement("tr");
+      tr.className = "border-b border-white/5 hover:bg-white/10 transition-colors group cursor-pointer";
+      tr.innerHTML = `
         <td class="px-6 py-4 font-medium text-slate-300">${event.timestamp}</td>
         <td class="px-6 py-4 font-semibold text-white">${event.device}</td>
-        <td class="px-6 py-4">
-            <div class="flex items-center gap-2">
-                <div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div>
-                <span class="text-slate-300 font-medium">${event.eventType || "Motion"}</span>
-            </div>
-        </td>
-    `;
-
-    tr.addEventListener("click", () => {
-      window.open(event.videoUrl, "_blank");
+        <td class="px-6 py-4"><div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div><span class="text-slate-300 font-medium">Motion</span></div></td>
+      `;
+      tr.addEventListener("click", () => window.open(event.videoUrl, "_blank"));
+      eventsTableBody.appendChild(tr);
     });
-
-    eventsTableBody.appendChild(tr);
-  });
-}
-
-// Grid Control Buttons
-const btnListView = document.getElementById("btn-list-view");
-const btnGridView = document.getElementById("btn-grid-view");
-
-// Grid Classes
-const CLASS_GRID_RESPONSIVE =
-  "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6";
-const CLASS_LIST_VIEW = "grid grid-cols-1 gap-6 max-w-3xl mx-auto"; // Centered list
-
-function setViewMode(mode) {
-  if (mode === "list") {
-    grid.className = CLASS_LIST_VIEW;
-    btnListView.classList.add("text-emerald-400", "bg-[#2a3040]");
-    btnGridView.classList.remove("text-emerald-400", "bg-[#2a3040]");
-  } else {
-    grid.className = CLASS_GRID_RESPONSIVE;
-    btnGridView.classList.add("text-emerald-400", "bg-[#2a3040]");
-    btnListView.classList.remove("text-emerald-400", "bg-[#2a3040]");
-  }
-}
-
-// Event Listeners
-if (btnListView && btnGridView) {
-  btnListView.addEventListener("click", () => setViewMode("list"));
-  btnGridView.addEventListener("click", () => setViewMode("grid"));
-}
-
-async function init() {
-  try {
-    fetchWeather(); // Fire and forget
-    fetchTuyaData("house");
-    fetchTuyaData("tent");
-    fetchRecentEvents();
-
-    const cameras = await fetchCameras();
-    channelCountEl.textContent = `${cameras.length} CHANNELS`;
-
-    if (cameras.length > 0) {
-      grid.innerHTML = ""; // Clear loading state
-      for (const cam of cameras) {
-        createCameraCard(cam);
-      }
-    } else {
-      grid.innerHTML =
-        '<div class="col-span-full text-center text-slate-500">No cameras detected.</div>';
-    }
   } catch (e) {
-    console.error("Initialization failed", e);
-    grid.innerHTML =
-      '<div class="col-span-full text-center text-red-500">System Offline. Connection Failed.</div>';
+    console.warn("Recent events fetch failed", e);
   }
 }
 
-async function fetchCameras() {
-  const res = await fetch(`${API.url}${API.endPoint.allCameras}`);
-  if (!res.ok) throw new Error("Failed to fetch cameras");
-  return await res.json();
-}
+// ─── Camera Logic ───────────────────────────────────────────
 
 function createCameraCard(camName) {
   const clone = template.content.cloneNode(true);
-  const cardContainer = clone.querySelector(".card-container");
-  const nameEl = clone.querySelector(".cam-name");
   const video = clone.querySelector("video");
   const loader = clone.querySelector(".loading-overlay");
+  clone.querySelector(".cam-name").textContent = camName;
+  
+  video.id = `video-${camName}`;
+  video.muted = true;
+  video.autoplay = true;
+  video.setAttribute('playsinline', '');
 
-  // Set Name
-  nameEl.textContent = `${camName}`;
-
-  // Double-Click Fullscreen
   video.addEventListener("dblclick", () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen();
-    } else {
-      if (video.requestFullscreen) {
-        video.requestFullscreen();
-      } else if (video.webkitRequestFullscreen) {
-        video.webkitRequestFullscreen(); // Safari
-      } else if (video.msRequestFullscreen) {
-        video.msRequestFullscreen(); // IE11
-      }
-    }
+    if (document.fullscreenElement) document.exitFullscreen();
+    else (video.requestFullscreen || video.webkitRequestFullscreen).call(video);
   });
 
-  // Robust Loading Handling
-  const hideLoader = () => {
-    if (!loader.classList.contains("hidden")) {
-      loader.classList.add("opacity-0");
-      setTimeout(() => loader.classList.add("hidden"), 300);
-    }
-  };
-
-  video.addEventListener("playing", hideLoader);
-  video.addEventListener("timeupdate", () => {
-    if (video.currentTime > 0 && !video.paused && !video.ended && video.readyState > 2) {
-      hideLoader();
-    }
+  video.addEventListener("playing", () => {
+    loader.classList.add("opacity-0");
+    setTimeout(() => loader.classList.add("hidden"), 300);
   });
-
-  // Retry on click if stuck
-  loader.addEventListener("click", () => {
-      console.log(`Manual retry for ${camName}`);
-      loadStream(video, camName, loader);
-  });
-
-  // Initial Load with m3u8 link (adjust your cam object to return the m3u8 link)
-  const streamUrl = `${API.url}/streams/${camName}/index.m3u8`;  // Example stream URL, replace as necessary
-  loadStream(video, streamUrl, loader);
-
+  
   grid.appendChild(clone);
+  return { video, camName, loader };
 }
 
-// Logic to load/reload stream
-function loadStream(video, streamUrl, loader) {
-  loader.classList.remove("hidden", "opacity-0");
+function loadStream(video, camName, loader) {
+  initTime[camName] = Date.now();
+  if (hlsInstances[camName]) hlsInstances[camName].destroy();
 
+  loader.classList.remove("hidden", "opacity-0");
+  const streamUrl = `${API.url}${API.endPoint.streams}/${camName}/index.m3u8?cb=${Date.now()}`;
+  
   if (Hls.isSupported()) {
     const hls = new Hls({
       enableWorker: true,
-      lowLatencyMode: false, // Relaxed for stability
-
-      // Relaxed Live Sync
+      lowLatencyMode: true,
       liveSyncDurationCount: 3,
-      liveMaxLatencyDurationCount: 10,
-      maxLiveSyncPlaybackRate: 1.5,
-
+      liveMaxLatencyDurationCount: 8,
       manifestLoadingMaxRetry: 10,
-      manifestLoadingRetryDelay: 500,
-      levelLoadingMaxRetry: 10,
-      fragLoadingMaxRetry: 10,
+    });
+    hlsInstances[camName] = hls;
+
+    hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(streamUrl));
+    hls.on(Hls.Events.MANIFEST_PARSED, () => {
+      const playWithRetry = () => {
+        if (!hlsInstances[camName]) return;
+        video.play().catch(e => {
+          if (e.name === 'AbortError' || video.paused) setTimeout(playWithRetry, 2000);
+        });
+      };
+      playWithRetry();
     });
 
-    hls.loadSource(streamUrl);
-    hls.attachMedia(video);
-    hls.on(Hls.Events.MANIFEST_PARSED, function () {
-      video.play().catch((e) => console.log("Autoplay blocked/failed", e));
-      loader.classList.add("opacity-0");
-      setTimeout(() => loader.classList.add("hidden"), 300);
-    });
-
-    hls.on(Hls.Events.ERROR, function (event, data) {
-      // Check for 404s specifically
-      const is404 = data.response && data.response.code === 404;
-      if (data.fatal || is404) {
-        console.warn(`HLS Error: ${data.type} / ${data.details} (404: ${is404})`);
-        if (is404) {
-          console.log("404 encountered. Reloading stream...");
+    hls.on(Hls.Events.ERROR, (event, data) => {
+      if (data.fatal) {
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
+        else {
           hls.destroy();
-          // Retry loop
-          setTimeout(() => {
-            loadStream(video, streamUrl, loader);
-          }, 2000);
-          return;
-        }
-
-        switch (data.type) {
-          case Hls.ErrorTypes.NETWORK_ERROR:
-            hls.startLoad();
-            break;
-          case Hls.ErrorTypes.MEDIA_ERROR:
-            hls.recoverMediaError();
-            break;
-          default:
-            hls.destroy();
-            setTimeout(() => loadStream(video, streamUrl, loader), 5000);
-            break;
+          setTimeout(() => loadStream(video, camName, loader), 5000);
         }
       }
     });
-  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-    video.src = streamUrl;
-    video.addEventListener("loadedmetadata", function () {
-      video.play().catch((e) => console.log("Autoplay blocked/failed", e));
-      loader.classList.add("opacity-0");
-      setTimeout(() => loader.classList.add("hidden"), 300);
-    });
 
-    video.addEventListener("error", function () {
-      setTimeout(() => {
-        loadStream(video, streamUrl, loader);
-      }, 2000);
-    });
+    hls.attachMedia(video);
+  } else {
+    video.src = streamUrl;
   }
 }
 
-// Start
+// ─── Play Guardian ──────────────────────────────────────────
+// Keeps the decoders alive and handles edge-case Chromium stalls
+setInterval(() => {
+  Object.keys(hlsInstances).forEach((camName) => {
+    const video = document.getElementById(`video-${camName}`);
+    if (!video || video.paused) return;
+    
+    // Stall Destroyer: If stuck at HAVE_METADATA and we have buffer data, seek to it
+    if (video.readyState === 1 && video.buffered.length > 0) {
+        const start = video.buffered.start(0);
+        if (Math.abs(video.currentTime - start) > 0.1) {
+            console.log(`[Guardian] Nudging ${camName} playhead to buffer start`);
+            video.currentTime = start;
+        }
+    }
+
+    // Black Screen Nudge: If time ticks but no frames render
+    if (video.currentTime > 0 && video.videoWidth === 0) {
+        video.currentTime += 0.1;
+    }
+  });
+}, 5000);
+
+// ─── Initialization ─────────────────────────────────────────
+
+async function init() {
+  try {
+    // Parallel UI data fetching
+    Promise.all([fetchWeather(), fetchTuyaData("house"), fetchTuyaData("tent"), fetchRecentEvents()]);
+
+    const res = await fetch(`${API.url}${API.endPoint.allCameras}`);
+    const cameras = await res.json();
+    channelCountEl.textContent = `${cameras.length} CHANNELS`;
+    grid.innerHTML = "";
+
+    // Parallel Camera Loading
+    cameras.forEach(cam => {
+      const { video, loader } = createCameraCard(cam);
+      loadStream(video, cam, loader);
+    });
+  } catch (e) {
+    console.error("Init failed", e);
+  }
+}
+
 init();
