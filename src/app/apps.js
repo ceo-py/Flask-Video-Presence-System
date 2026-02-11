@@ -1,6 +1,5 @@
 const API = {
-  // url: "http://127.0.0.1:5000",
-  url: "https://api-cameras.ceo-py.eu",
+  url: "http://127.0.0.1:5000",
   endPoint: {
     allCameras: "/api/allCameras",
     weather: "/api/weather/oryahovo",
