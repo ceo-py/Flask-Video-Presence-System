@@ -1,11 +1,8 @@
 const API = {
-  url: "http://127.0.0.1:5000",
+  // url: "http://127.0.0.1:5000",
+  url: "https://api-cameras.ceo-py.eu",
   endPoint: {
     allCameras: "/api/allCameras",
-    start: "/api/start",
-    stop: "/api/stop",
-    viewer: "/api/viewer",
-    stream: "/streams",
     weather: "/api/weather/oryahovo",
     tuya: "/api/tuya",
     recentEvents: "/api/recentEvents",
@@ -53,9 +50,7 @@ async function fetchWeather() {
     const res = await fetch(`${API.url}${API.endPoint.weather}`);
     if (!res.ok) throw new Error("Weather API failed");
 
-    // Data format: [t, t_min, t_max, feels_like, type_of_weather, weather_icon, humidity, wind_speed]
     const data = await res.json();
-
     if (Array.isArray(data) && data.length >= 8) {
       const temp = Math.round(data[0]);
       const tMin = Math.round(data[1]);
@@ -101,7 +96,6 @@ async function fetchTuyaData(target) {
     if (!res.ok) throw new Error(`Tuya API failed for ${target}`);
 
     const data = await res.json();
-    // {'va_temperature': 'N/A', 'va_humidity': 'N/A', 'battery_state': 'N/A'}
 
     const tempEl = target === "house" ? houseTemp : tentTemp;
     const humEl = target === "house" ? houseHumidity : tentHumidity;
@@ -214,57 +208,6 @@ if (btnListView && btnGridView) {
   btnGridView.addEventListener("click", () => setViewMode("grid"));
 }
 
-// Web Worker for Heartbeats (Prevents background throttling)
-const heartbeatWorkerScript = `
-    let activeCameras = new Set();
-    let timer = null;
-    let apiUrl = '';
-
-    self.onmessage = function(e) {
-        const { type, camera, url } = e.data;
-        
-        if (type === 'init') {
-            apiUrl = url;
-            if (!timer) {
-                // Heartbeat every 10 seconds (safe margin)
-                timer = setInterval(sendHeartbeats, 10000); 
-            }
-        } else if (type === 'add') {
-            activeCameras.add(camera);
-            // Send immediate first beat
-            sendBeat(camera);
-        } else if (type === 'remove') {
-            activeCameras.delete(camera);
-        }
-    };
-
-    function sendHeartbeats() {
-        activeCameras.forEach(cam => sendBeat(cam));
-    }
-
-    function sendBeat(cam) {
-        if (!apiUrl) return;
-        fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ camera: cam })
-        }).catch(err => console.warn('Worker beat failed', err));
-    }
-`;
-
-const heartbeatBlob = new Blob([heartbeatWorkerScript], {
-  type: "application/javascript",
-});
-const heartbeatWorker = new Worker(URL.createObjectURL(heartbeatBlob));
-
-// Initialize Worker with API URL
-heartbeatWorker.postMessage({
-  type: "init",
-  url: `${API.url}${API.endPoint.viewer}`,
-});
-
-let hlsInstances = {}; // Track HLS instances by camName
-
 async function init() {
   try {
     fetchWeather(); // Fire and forget
@@ -297,12 +240,6 @@ async function fetchCameras() {
   return await res.json();
 }
 
-async function startStream(camName) {
-  const res = await fetch(`${API.url}${API.endPoint.start}/${camName}`);
-  if (!res.ok) throw new Error(`Failed to start stream for ${camName}`);
-  return await res.json();
-}
-
 function createCameraCard(camName) {
   const clone = template.content.cloneNode(true);
   const cardContainer = clone.querySelector(".card-container");
@@ -310,13 +247,8 @@ function createCameraCard(camName) {
   const video = clone.querySelector("video");
   const loader = clone.querySelector(".loading-overlay");
 
-  // Controls
-
   // Set Name
   nameEl.textContent = `${camName}`;
-
-  // Controls Logic
-
 
   // Double-Click Fullscreen
   video.addEventListener("dblclick", () => {
@@ -347,164 +279,92 @@ function createCameraCard(camName) {
       hideLoader();
     }
   });
-  
+
   // Retry on click if stuck
   loader.addEventListener("click", () => {
       console.log(`Manual retry for ${camName}`);
       loadStream(video, camName, loader);
   });
 
-  // Initial Load
-  loadStream(video, camName, loader);
+  // Initial Load with m3u8 link (adjust your cam object to return the m3u8 link)
+  const streamUrl = `${API.url}/streams/${camName}/index.m3u8`;  // Example stream URL, replace as necessary
+  loadStream(video, streamUrl, loader);
 
   grid.appendChild(clone);
 }
 
 // Logic to load/reload stream
-function loadStream(video, camName, loader) {
-  // Clean up existing HLS if any
-  if (hlsInstances[camName]) {
-    hlsInstances[camName].destroy();
-    delete hlsInstances[camName];
-  }
-
+function loadStream(video, streamUrl, loader) {
   loader.classList.remove("hidden", "opacity-0");
 
-  // Start Worker Heartbeat
-  heartbeatWorker.postMessage({ type: "add", camera: camName });
+  if (Hls.isSupported()) {
+    const hls = new Hls({
+      enableWorker: true,
+      lowLatencyMode: false, // Relaxed for stability
 
-  startStream(camName)
-    .then(async (data) => {
-      // Cache busting: Append timestamp
-      const streamUrl = `${API.url}${data.url}?t=${Date.now()}`;
+      // Relaxed Live Sync
+      liveSyncDurationCount: 3,
+      liveMaxLatencyDurationCount: 10,
+      maxLiveSyncPlaybackRate: 1.5,
 
-      try {
-        await checkStreamReady(streamUrl);
-      } catch (e) {
-        console.warn(`Stream check timed out for ${camName}`);
-      }
+      manifestLoadingMaxRetry: 10,
+      manifestLoadingRetryDelay: 500,
+      levelLoadingMaxRetry: 10,
+      fragLoadingMaxRetry: 10,
+    });
 
-      if (Hls.isSupported()) {
-        const hls = new Hls({
-          enableWorker: true,
-          lowLatencyMode: false, // Relaxed for stability
+    hls.loadSource(streamUrl);
+    hls.attachMedia(video);
+    hls.on(Hls.Events.MANIFEST_PARSED, function () {
+      video.play().catch((e) => console.log("Autoplay blocked/failed", e));
+      loader.classList.add("opacity-0");
+      setTimeout(() => loader.classList.add("hidden"), 300);
+    });
 
-          // Relaxed Live Sync
-          liveSyncDurationCount: 3,
-          liveMaxLatencyDurationCount: 10,
-          maxLiveSyncPlaybackRate: 1.5,
-
-          manifestLoadingMaxRetry: 10,
-          manifestLoadingRetryDelay: 500,
-          levelLoadingMaxRetry: 10,
-          fragLoadingMaxRetry: 10,
-        });
-
-        hlsInstances[camName] = hls; // Store instance
-
-        hls.loadSource(streamUrl);
-        hls.attachMedia(video);
-        hls.on(Hls.Events.MANIFEST_PARSED, function () {
-          video.play().catch((e) => console.log("Autoplay blocked/failed", e));
-          loader.classList.add("opacity-0");
-          setTimeout(() => loader.classList.add("hidden"), 300);
-        });
-        hls.on(Hls.Events.ERROR, function (event, data) {
-          // Check for 404s specifically
-          const is404 = data.response && data.response.code === 404;
-
-          if (data.fatal || is404) {
-            console.warn(
-              `HLS Error: ${data.type} / ${data.details} (404: ${is404})`,
-            );
-
-            if (is404) {
-              console.log("404 encountered. Reloading stream...");
-              hls.destroy();
-              if (hlsInstances[camName] === hls) delete hlsInstances[camName];
-
-              // Retry loop
-              setTimeout(() => {
-                loadStream(video, camName, loader);
-              }, 2000);
-              return;
-            }
-
-            switch (data.type) {
-              case Hls.ErrorTypes.NETWORK_ERROR:
-                hls.startLoad();
-                break;
-              case Hls.ErrorTypes.MEDIA_ERROR:
-                hls.recoverMediaError();
-                break;
-              default:
-                hls.destroy();
-                if (hlsInstances[camName] === hls) delete hlsInstances[camName];
-                setTimeout(() => loadStream(video, camName, loader), 5000);
-                break;
-            }
-          }
-        });
-      } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-        video.src = streamUrl;
-        video.addEventListener("loadedmetadata", function () {
-          video.play().catch((e) => console.log("Autoplay blocked/failed", e));
-          loader.classList.add("opacity-0");
-          setTimeout(() => loader.classList.add("hidden"), 300);
-        });
-        video.addEventListener("error", function () {
+    hls.on(Hls.Events.ERROR, function (event, data) {
+      // Check for 404s specifically
+      const is404 = data.response && data.response.code === 404;
+      if (data.fatal || is404) {
+        console.warn(`HLS Error: ${data.type} / ${data.details} (404: ${is404})`);
+        if (is404) {
+          console.log("404 encountered. Reloading stream...");
+          hls.destroy();
+          // Retry loop
           setTimeout(() => {
-            loadStream(video, camName, loader);
+            loadStream(video, streamUrl, loader);
           }, 2000);
-        });
-      }
-    })
-    .catch((err) => {
-      console.error(`Stream error for ${camName}`, err);
-      loader.innerHTML = '<span class="text-red-500 text-xs">OFFLINE</span>';
-      // Retry eventually
-      setTimeout(() => loadStream(video, camName, loader), 5000);
-    });
-}
-
-// Helper: Polls for the m3u8 file until it returns 200 OK or timeout
-async function checkStreamReady(url, timeout = 15000) {
-  const start = Date.now();
-  while (Date.now() - start < timeout) {
-    try {
-      const res = await fetch(url, { method: "HEAD" });
-      if (res.ok) return true;
-    } catch (e) {
-      // ignore
-    }
-    await new Promise((r) => setTimeout(r, 1000));
-  }
-  // Don't throw explicitly, just return, let player try
-  return false;
-}
-
-// Cleanup on unload
-window.addEventListener("beforeunload", () => {
-  // Worker automatically killed when page closes, essentially
-  // But we can cleanup just to be safe if SPA
-});
-
-// Auto-Sync to Live Edge on Tab Focus
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "visible") {
-    console.log("Tab visible: Syncing streams to live edge...");
-    Object.values(hlsInstances).forEach((hls) => {
-      if (hls.media) {
-        // If latency is high (>3s), jump to live sync point
-        if (hls.latency > 3) {
-          hls.media.currentTime =
-            hls.liveSyncPosition || hls.media.duration - 1;
+          return;
         }
-        hls.media.play().catch((e) => console.log("Resume play failed", e));
+
+        switch (data.type) {
+          case Hls.ErrorTypes.NETWORK_ERROR:
+            hls.startLoad();
+            break;
+          case Hls.ErrorTypes.MEDIA_ERROR:
+            hls.recoverMediaError();
+            break;
+          default:
+            hls.destroy();
+            setTimeout(() => loadStream(video, streamUrl, loader), 5000);
+            break;
+        }
       }
     });
+  } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
+    video.src = streamUrl;
+    video.addEventListener("loadedmetadata", function () {
+      video.play().catch((e) => console.log("Autoplay blocked/failed", e));
+      loader.classList.add("opacity-0");
+      setTimeout(() => loader.classList.add("hidden"), 300);
+    });
+
+    video.addEventListener("error", function () {
+      setTimeout(() => {
+        loadStream(video, streamUrl, loader);
+      }, 2000);
+    });
   }
-});
+}
 
 // Start
 init();
