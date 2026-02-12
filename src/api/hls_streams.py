@@ -32,9 +32,10 @@ def start_stream(cam):
         "-i", CAMERAS[cam],
         "-codec:v", "copy",
         "-f", "hls",
+        "-hls_segment_type", "fmp4",
         "-hls_time", FFMPEG_HLS_TIME,
         "-hls_list_size", FFMPEG_HLS_LIST_SIZE,
-        "-hls_flags", "delete_segments+temp_file",
+        "-hls_flags", "delete_segments+temp_file+independent_segments",
         "-reconnect", "1",                # Enable reconnect
         "-reconnect_at_eof", "1",         # Reconnect at EOF
         "-reconnect_on_network_error", "1",  # Reconnect on network error
