@@ -37,7 +37,7 @@ const tentLoader = document.getElementById("tent-loader");
 const eventsTableBody = document.getElementById("events-table-body");
 const eventCountEl = document.getElementById("event-count");
 
-let hlsInstances = {};
+let videoPlayers = {};
 let initTime = {};
 
 // ─── Data Fetchers ──────────────────────────────────────────
@@ -138,70 +138,76 @@ function createCameraCard(camName) {
 
 function loadStream(video, camName, loader) {
   initTime[camName] = Date.now();
-  if (hlsInstances[camName]) hlsInstances[camName].destroy();
+  
+  // Dispose existing player if it exists
+  if (videoPlayers[camName]) {
+    videoPlayers[camName].dispose();
+    delete videoPlayers[camName];
+  }
 
   loader.classList.remove("hidden", "opacity-0");
   const streamUrl = `${API.url}${API.endPoint.streams}/${camName}/index.m3u8?cb=${Date.now()}`;
   
-  if (Hls.isSupported()) {
-    const hls = new Hls({
-      enableWorker: true,
-      lowLatencyMode: true,
-      liveSyncDurationCount: 3,
-      liveMaxLatencyDurationCount: 8,
-      manifestLoadingMaxRetry: 10,
-    });
-    hlsInstances[camName] = hls;
-
-    hls.on(Hls.Events.MEDIA_ATTACHED, () => hls.loadSource(streamUrl));
-    hls.on(Hls.Events.MANIFEST_PARSED, () => {
-      const playWithRetry = () => {
-        if (!hlsInstances[camName]) return;
-        video.play().catch(e => {
-          if (e.name === 'AbortError' || video.paused) setTimeout(playWithRetry, 2000);
-        });
-      };
-      playWithRetry();
-    });
-
-    hls.on(Hls.Events.ERROR, (event, data) => {
-      if (data.fatal) {
-        if (data.type === Hls.ErrorTypes.MEDIA_ERROR) hls.recoverMediaError();
-        else {
-          hls.destroy();
-          setTimeout(() => loadStream(video, camName, loader), 5000);
-        }
+  // Initialize Video.js
+  const player = videojs(video, {
+    autoplay: true,
+    muted: true,
+    controls: false,
+    liveui: true,
+    fluid: true,
+    html5: {
+      vhs: {
+        overrideNative: !videojs.browser.IS_SAFARI,
+        enableLowLatency: true,
+        fastQualityChange: true,
+        // Forcing to start after 1st segment since segments are long (20s)
+        liveSyncDurationCount: 1, 
+        // Allow more buffer to prevent stalls with long segments
+        maxBufferLength: 60,
       }
-    });
+    },
+    sources: [{
+      src: streamUrl,
+      type: 'application/x-mpegURL'
+    }]
+  });
 
-    hls.attachMedia(video);
-  } else {
-    video.src = streamUrl;
-  }
+  videoPlayers[camName] = player;
+
+  player.on('playing', () => {
+    loader.classList.add("opacity-0");
+    setTimeout(() => loader.classList.add("hidden"), 300);
+  });
+
+  player.on('error', () => {
+    console.warn(`[VideoJS] Error on ${camName}, retrying in 5s...`);
+    setTimeout(() => {
+      if (videoPlayers[camName]) {
+        loadStream(video, camName, loader);
+      }
+    }, 5000);
+  });
 }
 
 // ─── Play Guardian ──────────────────────────────────────────
 // Keeps the decoders alive and handles edge-case Chromium stalls
+// Video.js handles most stalls and sync issues internally.
+// We'll keep a minimal sync-check to ensure players don't drift too far.
 setInterval(() => {
-  Object.keys(hlsInstances).forEach((camName) => {
-    const video = document.getElementById(`video-${camName}`);
-    if (!video || video.paused) return;
+  Object.keys(videoPlayers).forEach((camName) => {
+    const player = videoPlayers[camName];
+    if (!player || player.paused()) return;
     
-    // Stall Destroyer: If stuck at HAVE_METADATA and we have buffer data, seek to it
-    if (video.readyState === 1 && video.buffered.length > 0) {
-        const start = video.buffered.start(0);
-        if (Math.abs(video.currentTime - start) > 0.1) {
-            console.log(`[Guardian] Nudging ${camName} playhead to buffer start`);
-            video.currentTime = start;
+    // If the live tracker says we are too far behind, seek to live
+    if (player.liveTracker && player.liveTracker.atLiveEdge && !player.liveTracker.atLiveEdge()) {
+        const liveWindow = player.liveTracker.liveWindow();
+        if (liveWindow > 10) { // If behind by more than 10s
+             console.log(`[Sync] Nudging ${camName} to live edge`);
+             player.liveTracker.seekToLiveEdge();
         }
     }
-
-    // Black Screen Nudge: If time ticks but no frames render
-    if (video.currentTime > 0 && video.videoWidth === 0) {
-        video.currentTime += 0.1;
-    }
   });
-}, 5000);
+}, 10000);
 
 // ─── Initialization ─────────────────────────────────────────
 
