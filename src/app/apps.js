@@ -3,7 +3,7 @@ const API = {
   endPoint: {
     allCameras: "/api/allCameras",
     streams: "/streams",
-    weather: "/api/weather/oriahovo",
+    weather: "/api/weather/oryahovo",
     tuya: "/api/tuya",
     recentEvents: "/api/recentEvents",
   },
