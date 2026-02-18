@@ -11,7 +11,16 @@ if [ -z "$RTSP_URL" ]; then
     exit 1
 fi
 
-mkdir -p "$HLS_ROOT_RAM_DISK/$CAM_NAME"
+echo "Checking directory: $HLS_ROOT_RAM_DISK/$CAM_NAME"
+
+if [ -d "$HLS_ROOT_RAM_DISK/$CAM_NAME" ]; then
+    echo "Directory exists. Deleting contents..."
+    rm -rf "$HLS_ROOT_RAM_DISK/$CAM_NAME"/* "$HLS_ROOT_RAM_DISK/$CAM_NAME"/.* 2>/dev/null
+    echo "Contents deleted."
+else
+    echo "Directory does not exist. Creating it..."
+    mkdir -p "$HLS_ROOT_RAM_DISK/$CAM_NAME"    # Create the directory if it doesn't exist
+fi
 
 exec /usr/bin/ffmpeg \
   -rtsp_transport tcp \
