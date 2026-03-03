@@ -205,8 +205,7 @@ function createCameraCard(camName) {
   video.setAttribute('playsinline', '');
 
   video.addEventListener("dblclick", () => {
-    if (document.fullscreenElement) document.exitFullscreen();
-    else (video.requestFullscreen || video.webkitRequestFullscreen).call(video);
+    toggleFullscreen(video);
   });
 
   // Mobile double-tap fullscreen
@@ -214,11 +213,26 @@ function createCameraCard(camName) {
   video.addEventListener("touchend", () => {
     const now = Date.now();
     if (now - lastTouchEnd <= 300) {
-      if (document.fullscreenElement) document.exitFullscreen();
-      else (video.requestFullscreen || video.webkitRequestFullscreen).call(video);
+      toggleFullscreen(video);
     }
     lastTouchEnd = now;
   });
+
+  function toggleFullscreen(v) {
+    if (document.fullscreenElement) {
+      document.exitFullscreen();
+      v.style.objectFit = "cover";
+    } else {
+      if (v.requestFullscreen) {
+        v.requestFullscreen();
+      } else if (v.webkitRequestFullscreen) {
+        v.webkitRequestFullscreen();
+      } else if (v.webkitEnterFullscreen) {
+        v.webkitEnterFullscreen();
+      }
+      v.style.objectFit = "contain";
+    }
+  }
 
   video.addEventListener("playing", () => {
     loader.classList.add("opacity-0");
