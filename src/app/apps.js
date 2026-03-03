@@ -6,6 +6,8 @@ const API = {
     weather: "/api/weather/oryahovo",
     tuya: "/api/tuya",
     recentEvents: "/api/recentEvents",
+    stopBroadcasts: "/api/stopAllBroadcasts",
+    deletePlaylist: "/api/youtubePlaylist",
   },
 };
 
@@ -89,25 +91,105 @@ async function fetchRecentEvents() {
     const events = await res.json();
     if (!eventsTableBody) return;
     if (eventCountEl) eventCountEl.textContent = `${events.length} EVENTS`;
-    eventsTableBody.innerHTML = events.length === 0 
-      ? '<tr><td colspan="3" class="px-6 py-8 text-center text-slate-500 italic">No recent events detected.</td></tr>'
+    eventsTableBody.innerHTML = events.length === 0
+      ? '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500 italic">No recent events detected.</td></tr>'
       : "";
     
     events.forEach((event) => {
       const tr = document.createElement("tr");
-      tr.className = "border-b border-white/5 hover:bg-white/10 transition-colors group cursor-pointer";
+      tr.className = "border-b border-white/5 hover:bg-white/10 transition-colors group";
       tr.innerHTML = `
         <td class="px-6 py-4 font-medium text-slate-300">${event.timestamp}</td>
         <td class="px-6 py-4 font-semibold text-white">${event.device}</td>
         <td class="px-6 py-4"><div class="flex items-center gap-2"><div class="w-1.5 h-1.5 rounded-full bg-orange-500"></div><span class="text-slate-300 font-medium">Motion</span></div></td>
+        <td class="px-6 py-4">
+          <button class="delete-event-btn p-2 rounded-lg hover:bg-red-500/20 text-red-400 hover:text-red-300" data-id="${event.id}" title="Delete">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        </td>
       `;
-      tr.addEventListener("click", () => window.open(event.videoUrl, "_blank"));
+      tr.addEventListener("click", (e) => {
+        if (e.target.closest(".delete-event-btn")) return;
+        window.open(event.videoUrl, "_blank");
+      });
       eventsTableBody.appendChild(tr);
+    });
+
+    // Add delete event handlers
+    document.querySelectorAll(".delete-event-btn").forEach((btn) => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const id = btn.dataset.id;
+        const password = prompt("Enter admin password:");
+        if (!password) return;
+        try {
+          const res = await fetch(`${API.url}${API.endPoint.recentEvents}/${id}`, {
+            method: "DELETE",
+            headers: { "X-Admin-Password": password }
+          });
+          if (res.ok) {
+            btn.closest("tr").remove();
+            if (eventCountEl) {
+              const count = eventsTableBody.querySelectorAll("tr").length;
+              eventCountEl.textContent = `${count} EVENTS`;
+            }
+          } else {
+            alert("Invalid password or failed to delete");
+          }
+        } catch (err) {
+          console.error("Delete failed", err);
+          alert("Failed to delete event");
+        }
+      });
     });
   } catch (e) {
     console.warn("Recent events fetch failed", e);
   }
 }
+
+// Delete all events
+document.getElementById("delete-all-events-btn")?.addEventListener("click", async () => {
+  if (!confirm("Delete ALL event videos from YouTube playlist? This cannot be undone.")) return;
+  const password = prompt("Enter admin password:");
+  if (!password) return;
+  try {
+    const res = await fetch(`${API.url}${API.endPoint.deletePlaylist}`, {
+      method: "DELETE",
+      headers: { "X-Admin-Password": password }
+    });
+    if (res.ok) {
+      eventsTableBody.innerHTML = '<tr><td colspan="4" class="px-6 py-8 text-center text-slate-500 italic">All events deleted.</td></tr>';
+      if (eventCountEl) eventCountEl.textContent = "0 EVENTS";
+    } else {
+      alert("Invalid password or failed to delete");
+    }
+  } catch (err) {
+    console.error("Delete all failed", err);
+    alert("Failed to delete all events");
+  }
+});
+
+// Stop all broadcasts
+document.getElementById("stop-all-btn")?.addEventListener("click", async () => {
+  const password = prompt("Enter admin password:");
+  if (!password) return;
+  try {
+    const res = await fetch(`${API.url}${API.endPoint.stopBroadcasts}`, {
+      method: "POST",
+      headers: { "X-Admin-Password": password }
+    });
+    if (res.ok) {
+      alert("All broadcasts stopped");
+    } else {
+      alert("Invalid password or failed to stop broadcasts");
+    }
+  } catch (err) {
+    console.error("Stop broadcasts failed", err);
+    alert("Failed to stop broadcasts");
+  }
+});
 
 // ─── Camera Logic ───────────────────────────────────────────
 
