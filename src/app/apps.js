@@ -127,6 +127,17 @@ function createCameraCard(camName) {
     else (video.requestFullscreen || video.webkitRequestFullscreen).call(video);
   });
 
+  // Mobile double-tap fullscreen
+  let lastTouchEnd = 0;
+  video.addEventListener("touchend", () => {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else (video.requestFullscreen || video.webkitRequestFullscreen).call(video);
+    }
+    lastTouchEnd = now;
+  });
+
   video.addEventListener("playing", () => {
     loader.classList.add("opacity-0");
     setTimeout(() => loader.classList.add("hidden"), 300);
